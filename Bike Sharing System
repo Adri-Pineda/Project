@@ -1,0 +1,168 @@
+## The data used for this project was downloded as an excel workbook where it was pre-cleaned before been uploaded to BigQuery SQL for cleaning and analyzing. 
+## The data was arranged by month when downloaded. I used UNION ALL command to append all the tables in one while keeping all the values. 
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.01_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.02_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.03_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.04_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.05_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.06_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.07_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.08_2023`
+UNION ALL
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.tripdata_2023.09_2023`
+
+## The query below is to find the lenght of the ride_id column which is comprised mostly by a text string of 16 characters long. 
+## each value is unique which makes it the primary key of the table.
+
+SELECT LENGTH (ride_id)
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_2023`
+
+SELECT LENGTH(ride_id),count (*)
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_2023`
+WHERE LENGTH (ride_id) < 16
+GROUP BY LENGTH (ride_id);
+
+SELECT DISTINCT ride_id
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_2023`
+WHERE LENGTH(ride_id) = 16
+
+## The queries above showed that there were multiple ride_id columns that had text strings of less than 16.
+## A table where the data was updated to show only the rows with 16 characters long was created. 
+
+CREATE TABLE `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned` AS
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_2023`
+WHERE ride_id >= '16';
+
+SELECT DISTINCT rideable_type
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+
+## The data shows three types of riding bikes or rideable_type : docked_bike, classic_bike, and electric_bike.
+## Docked and classic refered to the same type of bike that needs to be docked at a station at the end of the ride.
+## Electric bike can also be docked at a station or a cable lock can be used at an e_bike or public bike rack.
+
+## A table updating docked_bike type to classic_bike type was created for clarity and organization.
+
+UPDATE `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+SET rideable_type = 'classic_bike'
+WHERE rideable_type = 'docked_bike'
+
+## classic_bikes must be returned to a docking station, however, there were multiple end_station columns that were null. 
+## Since there was no data showing ride time or length,nor if the bike was returned; I queried the rows where the data for the classic_bike was not null. 
+
+SELECT rideable_type,end_station_name
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE end_station_name IS NOT NULL
+AND rideable_type = 'classic_bike'
+
+## Since a cable lock can be used when riding an electric_bike; the end_station column returns many rows with null values. 
+## A table updating the end_station and start_station nulls with e_bike was created. 
+
+SELECT rideable_type, end_station_name
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE end_station_name IS NULL
+AND rideable_type = 'electric_bike'
+
+UPDATE `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+SET end_station_name = 'e-bike'
+WHERE end_station_name is null
+
+SELECT rideable_type, start_station_name
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE start_station_name IS NULL
+AND rideable_type = 'electric_bike'
+
+UPDATE `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+SET start_station_name = 'e-bike'
+WHERE start_station_name is null
+
+## The query below shows only two types of consumers in the member_casual column
+
+SELECT DISTINCT member_casual 
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+
+## After cleaning the rows and columns that were not necessary for the analysis there are 4,081,054 rows and 9 columns of clean data.The original data consisted of 4,463,635 rows. Four columns containing latitude and longitude data was removed since it did not provide useful information for the analysis.
+## There are 1,536,729 casual riders that can potentionally be converted to membership customers.
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE member_casual ='casual'
+
+## The query below shows there is not notable preference between classic bike or electric bike for member or casual riders.
+
+SELECT rideable_type,member_casual, count (*) AS type_of_bike
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+GROUP BY rideable_type,member_casual
+ORDER BY member_casual, type_of_bike DESC
+
+## The query below shows how many bike rides per day of the week. 
+## The data shows the members tend to use the bikes more during the week and casual riders use them more on the weekends.
+
+SELECT member_casual,day_of_week, count (*) AS day_of_ride
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+GROUP BY member_casual,day_of_week
+
+## The data has shown a pattern of ridership increase as the weather gets warmer. I have divided the monthly data into quaters to test this theory. 
+# During quater one, the amount of rides for casual riders was 125,999 and the amount of member riders was 429,891.
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE started_at BETWEEN '2023-01-01' AND '2023-03-31'
+AND member_casual ='casual'
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE started_at BETWEEN '2023-01-01' AND '2023-03-31'
+AND member_casual ='member'
+
+## In quater two, during spring weather there was an increase of ridership showing 595,477 casual riders and 935,163 members.
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE started_at BETWEEN '2023-04-01' AND '2023-06-30'
+AND member_casual = 'casual'
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE started_at BETWEEN '2023-04-01' AND '2023-06-30'
+AND member_casual = 'member'
+
+## During quater 3 below, there was an increase in ridership, showing 803,853 casual riders and 1,161,226 members.
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE started_at BETWEEN '2023-07-01' AND '2023-10-01'
+AND member_casual = 'casual'
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+WHERE started_at BETWEEN '2023-07-01' AND '2023-10-01'
+AND member_casual = 'member'
+
+## Riders used the bikes depending on the time of day and the type of rider. 
+
+SELECT member_casual, EXTRACT(hour FROM started_at) AS time_of_day, count(*) number_of_rides
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+GROUP BY member_casual,time_of_day;
+
+SELECT *
+FROM `cyclistic-tripdata-2023-402514.bike_tripdata.bike_tripdata_cleaned`
+  
+
