@@ -1,0 +1,1 @@
+This data analysis projects aims to provide insights into the riding differences of customers that purchase an annual membership subscription and those that are casual riders. The goal is to provide data-driven recommendations to convert casual riders into annual members.
